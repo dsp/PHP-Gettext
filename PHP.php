@@ -55,22 +55,7 @@ class Gettext_PHP extends Gettext
         $this->mofile = sprintf("%s/%s/LC_MESSAGES/%s.mo", $directory, $locale, $domain);
     }
 
-    /**
-     * Parse the MO file
-     *
-     * @return void
-     */
-    private function parse() {
-        if (!file_exists($this->mofile)) {
-            throw new Exception ("File does not exist");
-        }
-
-        $filesize = filesize($this->mofile);
-        if ($filesize < 4 * 7) {
-            throw new Exception('File is too small');
-        }
-        /* check for filesize */
-        $fp     = fopen($this->mofile, "rb");
+    private function parseHeader($fp){
         $data   = fread($fp, 8);
         $header = unpack("imagic/irevision", $data);
 
@@ -89,57 +74,78 @@ class Gettext_PHP extends Gettext
 
         $data    = fread($fp, 4 * 5);
         $offsets = unpack("inum_strings/iorig_offset/itrans_offset/ihash_size/ihash_offset", $data);
+        return $offsets;
+    }
 
-        /* more tests */
-        if (fseek($fp, $offsets['orig_offset'], SEEK_SET) < 0) {
+    private function parseOffsetTable($fp, $offset, $num) {
+        if (fseek($fp, $offset, SEEK_SET) < 0) {
             throw new Exception ("Error seeking offset");
         }
 
-        /* prefatch */
-        $offsetTableOriginal = array();
+        $table = array();
+        for ($i = 0; $i < $num; $i++) {
+            $data    = fread($fp, 8);
+            $table[] = unpack("lsize/loffset", $data);
+        }
+
+        return $table;
+    }
+
+    private function parseEntry($fp, $entry) {
+        if (fseek($fp, $entry['offset'], SEEK_SET) < 0) {
+            fclose($fp);
+            throw new Exception ("Error seeking offset");
+        }
+        if ($entry['size'] > 0) {
+            $entry['string'] = fread($fp, $entry['size']);
+        } else {
+            $entry['string'] = '';
+        }
+
+       return $entry;
+    }
+
+
+    /**
+     * Parse the MO file
+     *
+     * @return void
+     */
+    private function parse() {
+        if (!file_exists($this->mofile)) {
+            throw new Exception ("File does not exist");
+        }
+
+        $filesize = filesize($this->mofile);
+        if ($filesize < 4 * 7) {
+            throw new Exception('File is too small');
+        }
+    
+        /* check for filesize */
+        $fp = fopen($this->mofile, "rb");
+
+        $offsets = $this->parseHeader($fp);
         if ($filesize < 4 * ($offsets['num_strings'] + 7)) {
             throw new Exception('File is too small');
         }
-        for ($i = 0; $i < $offsets['num_strings']; $i++) {
-            $data                  = fread($fp, 8);
-            $offsetTableOriginal[] = unpack("lsize/loffset", $data);
-        }
 
-        $offsetTableTranslations = array();
-        for ($i = 0; $i < $offsets['num_strings']; $i++) {
-            $data                      = fread($fp, 8);
-            $offsetTableTranslations[] = unpack("lsize/loffset", $data);
-        }
-
-        $idx = 0;
         $this->origTable = array();
-        foreach ($offsetTableOriginal as $entry) {
-            if (fseek($fp, $entry['offset'], SEEK_SET) < 0) {
-                fclose($fp);
-                throw new Exception ("Error seeking offset");
-            }
-            if ($entry['size'] > 0) {
-                $entry['string'] = fread($fp, $entry['size']);
-                $entry['index']  = $idx;
 
-                $this->origTable[$entry['string']] = $entry;
-            }
-            $idx++;
+        $table = $this->parseOffsetTable($fp, $offsets['orig_offset'],
+                        $offsets['num_strings']);
+        foreach ($table as $idx => $entry) {
+            $entry['index']  = $idx;
+            $entry = $this->parseEntry($fp, $entry);
+            $this->origTable[$entry['string']] = $entry;
         }
 
         $idx = 0;
         $this->transTable = array();
-        foreach ($offsetTableTranslations as $entry) {
-            if (fseek($fp, $entry['offset'], SEEK_SET) < 0) {
-                fclose($fp);
-                throw new Exception ("Error seeking offset");
-            }
-            if ($entry['size'] > 0) {
-                $entry['string'] = fread($fp, $entry['size']);
-
-                $this->transTable[$idx] = $entry;
-            }
-            $idx++;
+        $table = $this->parseOffsetTable($fp, $offsets['trans_offset'],
+                        $offsets['num_strings']);
+        foreach ($table as $idx => $entry) {
+            $entry = $this->parseEntry($fp, $entry);
+            $this->transTable[$idx] = $entry;
         }
 
         fclose($fp);
@@ -169,7 +175,23 @@ class Gettext_PHP extends Gettext
         return $msg;
     }
 
-    public function ngettext($msg1, $msg2, $count) {
+    public function ngettext($msg, $msg_plural, $count) {
+        if (!$this->parsed) {
+            $this->parse();
+        }
+        $k = $msg . chr(0) . $msg_plural;
+        if (array_key_exists($k, $this->origTable)) {
+            $idx    = $this->origTable[$k]['index'];
+            $entry  = $this->transTable[$idx]['string'];
+            $msgarr = explode(chr(0), $entry);
+            if (count($msgarr) < $count - 1) {
+                return $msg;
+            }
+
+            return $msgarr[$count - 1];
+        }
+
+        return $msg;
     }
 }
 

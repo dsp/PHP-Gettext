@@ -1,9 +1,9 @@
 About
-===================
+-----
 This is a PHP Implementation of Gettext.
 
 License Information
-===================
+-------------------
 
 Copyright (c) 2009 David Soria Parra
 
