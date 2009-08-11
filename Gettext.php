@@ -72,7 +72,8 @@ abstract class Gettext
      *
      * @retunr Gettext An instance of a Gettext implementation
      */
-    public static function getInstance($directory, $domain, $locale) {
+    public static function getInstance($directory, $domain, $locale)
+    {
         if (!self::$instance) {
             if (extension_loaded('gettext')) {
                 self::$instance = new Gettext_Extension($directory, $domain, $locale);

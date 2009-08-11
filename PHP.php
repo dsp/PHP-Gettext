@@ -50,35 +50,40 @@ class Gettext_PHP extends Gettext
      *
      * @param String $mofile The file to parse
      */
-    public function __construct($directory, $domain, $locale) {
-        $this->mofile = sprintf("%s/%s/LC_MESSAGES/%s.mo", $directory, $locale, $domain);
+    public function __construct($directory, $domain, $locale)
+    {
+        $this->mofile = sprintf("%s/%s/LC_MESSAGES/%s.mo", $directory,
+                            $locale, $domain);
     }
 
-    private function parseHeader($fp){
+    private function parseHeader($fp)
+    {
         $data   = fread($fp, 8);
         $header = unpack("imagic/irevision", $data);
 
-        if ($header['magic'] != (int) self::MAGIC1
-           && $header['magic'] != (int) self::MAGIC2) {
+        if ((int) self::MAGIC1 != $header['magic']
+           && (int) self::MAGIC2 != $header['magic']) {
             fclose($fp);
-            throw new Exception ("Not a gettext file");
+            throw new Exception("Not a gettext file");
         }
 
-        if ($header['revision'] != 0) {
+        if (0 != $header['revision']) {
             fclose($fp);
-            throw new Exception ("Unsupported version");
+            throw new Exception("Unsupported version");
         }
 
         $this->revision = $header['revision'];
 
         $data    = fread($fp, 4 * 5);
-        $offsets = unpack("inum_strings/iorig_offset/itrans_offset/ihash_size/ihash_offset", $data);
+        $offsets = unpack("inum_strings/iorig_offset/"
+                          . "itrans_offset/ihash_size/ihash_offset", $data);
         return $offsets;
     }
 
-    private function parseOffsetTable($fp, $offset, $num) {
+    private function parseOffsetTable($fp, $offset, $num)
+    {
         if (fseek($fp, $offset, SEEK_SET) < 0) {
-            throw new Exception ("Error seeking offset");
+            throw new Exception("Error seeking offset");
         }
 
         $table = array();
@@ -90,10 +95,11 @@ class Gettext_PHP extends Gettext
         return $table;
     }
 
-    private function parseEntry($fp, $entry) {
+    private function parseEntry($fp, $entry)
+    {
         if (fseek($fp, $entry['offset'], SEEK_SET) < 0) {
             fclose($fp);
-            throw new Exception ("Error seeking offset");
+            throw new Exception("Error seeking offset");
         }
         if ($entry['size'] > 0) {
             return fread($fp, $entry['size']);
@@ -108,9 +114,10 @@ class Gettext_PHP extends Gettext
      *
      * @return void
      */
-    private function parse() {
+    private function parse()
+    {
         if (!file_exists($this->mofile)) {
-            throw new Exception ("File does not exist");
+            throw new Exception("File does not exist");
         }
 
         $filesize = filesize($this->mofile);
@@ -161,7 +168,8 @@ class Gettext_PHP extends Gettext
      *
      * @return Translated message
      */
-    public function gettext($msg) {
+    public function gettext($msg)
+    {
         if (!$this->parsed) {
             $this->parse();
         }
@@ -172,12 +180,13 @@ class Gettext_PHP extends Gettext
         return $msg;
     }
 
-    public function ngettext($msg, $msg_plural, $count) {
+    public function ngettext($msg, $msg_plural, $count)
+    {
         if (!$this->parsed) {
             $this->parse();
         }
 
-        $msg   = (string) $msg;
+        $msg = (string) $msg;
 
         if (array_key_exists($msg, $this->translationTable)) {
             $translation = $this->translationTable[$msg];
@@ -189,7 +198,7 @@ class Gettext_PHP extends Gettext
         }
 
         /* not found, handle count */
-        if ($count == 1) {
+        if (1 == $count) {
             return $msg;
         } else {
             return $msg_plural;

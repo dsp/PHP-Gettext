@@ -35,7 +35,8 @@ class Gettext_Extension extends Gettext
      *
      * @param String $mofile The file to parse
      */
-    public function __construct($directory, $domain, $locale) {
+    public function __construct($directory, $domain, $locale)
+    {
         setlocale(LC_ALL, $locale);
         bindtextdomain($domain, $directory);
         textdomain($domain);
@@ -49,11 +50,13 @@ class Gettext_Extension extends Gettext
      *
      * @return Translated message
      */
-    public function gettext($msg) {
+    public function gettext($msg)
+    {
         return gettext($msg);
     }
 
-    public function ngettext($msg1, $msg2, $count) {
+    public function ngettext($msg1, $msg2, $count)
+    {
         return ngettext($msg1, $msg2, $count);
     }
 }
