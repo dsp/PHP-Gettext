@@ -170,6 +170,22 @@ class Gettext_PHP extends Gettext
     }
 
     public function ngettext($msg1, $msg2, $count) {
+        if (!$this->parsed) {
+            $this->parse();
+        }
+        $k = $msg1 . chr(0) . $msg2;
+        if (array_key_exists($k, $this->origTable)) {
+            $idx   = $this->origTable[$k]['index'];
+            $entry = $this->transTable[$idx]['string'];
+            $msg   = explode(chr(0), $entry);
+            if (count($msg) < $count - 1) {
+                return $msg1;
+            }
+
+            return $msg[$count - 1];
+        }
+
+        return $msg;
     }
 }
 
