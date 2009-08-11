@@ -21,8 +21,10 @@
  * THE SOFTWARE.
  */
 
-include 'PHP.php';
-include 'Extension.php';
+namespace Gettext;
+
+require_once 'PHP.php';
+require_once 'Extension.php';
 
 /**
  * Gettext implementation in PHP
@@ -75,9 +77,9 @@ abstract class Gettext
     public static function getInstance($directory, $domain, $locale) {
         if (!self::$instance) {
             if (extension_loaded('gettext')) {
-                self::$instance = new Gettext_Extension($directory, $domain, $locale);
+                self::$instance = new \Gettext\Implementation\Extension($directory, $domain, $locale);
             } else {
-                self::$instance = new Gettext_PHP($directory, $domain, $locale);
+                self::$instance = new \Gettext\Implementation\PHP($directory, $domain, $locale);
             }
         }
 

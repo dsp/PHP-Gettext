@@ -20,6 +20,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
+ namespace Gettext\Implementation;
 
 
 /**
@@ -28,7 +29,7 @@
  * @copyright (c) 2009 David Soria Parra <sn_@gmx.net>
  * @author David Soria Parra <sn_@gmx.net>
  */
-class Gettext_PHP extends Gettext
+class PHP extends \Gettext\Gettext
 {
     /**
      * First magic word in the MO header
@@ -41,8 +42,7 @@ class Gettext_PHP extends Gettext
     const MAGIC2 = 0x950412de;
 
     protected $mofile;
-    protected $origTable = array();
-    protected $transTable = array();
+    protected $translationTable = array();
     protected $revision = 0;
     protected $parsed = false;
 
@@ -62,12 +62,12 @@ class Gettext_PHP extends Gettext
         if ($header['magic'] != (int) self::MAGIC1
            && $header['magic'] != (int) self::MAGIC2) {
             fclose($fp);
-            throw new Exception ("Not a gettext file");
+            throw new \Exception ("Not a gettext file");
         }
 
         if ($header['revision'] != 0) {
             fclose($fp);
-            throw new Exception ("Unsupported version");
+            throw new \Exception ("Unsupported version");
         }
 
         $this->revision = $header['revision'];
@@ -79,7 +79,7 @@ class Gettext_PHP extends Gettext
 
     private function parseOffsetTable($fp, $offset, $num) {
         if (fseek($fp, $offset, SEEK_SET) < 0) {
-            throw new Exception ("Error seeking offset");
+            throw new \Exception ("Error seeking offset");
         }
 
         $table = array();
@@ -94,15 +94,13 @@ class Gettext_PHP extends Gettext
     private function parseEntry($fp, $entry) {
         if (fseek($fp, $entry['offset'], SEEK_SET) < 0) {
             fclose($fp);
-            throw new Exception ("Error seeking offset");
+            throw new \Exception ("Error seeking offset");
         }
         if ($entry['size'] > 0) {
-            $entry['string'] = fread($fp, $entry['size']);
-        } else {
-            $entry['string'] = '';
+            return fread($fp, $entry['size']);
         }
 
-       return $entry;
+       return '';
     }
 
 
@@ -113,12 +111,12 @@ class Gettext_PHP extends Gettext
      */
     private function parse() {
         if (!file_exists($this->mofile)) {
-            throw new Exception ("File does not exist");
+            throw new \Exception ("File does not exist");
         }
 
         $filesize = filesize($this->mofile);
         if ($filesize < 4 * 7) {
-            throw new Exception('File is too small');
+            throw new \Exception('File is too small');
         }
     
         /* check for filesize */
@@ -126,26 +124,29 @@ class Gettext_PHP extends Gettext
 
         $offsets = $this->parseHeader($fp);
         if ($filesize < 4 * ($offsets['num_strings'] + 7)) {
-            throw new Exception('File is too small');
+            throw new \Exception('File is too small');
         }
 
-        $this->origTable = array();
-
-        $table = $this->parseOffsetTable($fp, $offsets['orig_offset'],
-                        $offsets['num_strings']);
-        foreach ($table as $idx => $entry) {
-            $entry['index']  = $idx;
-            $entry = $this->parseEntry($fp, $entry);
-            $this->origTable[$entry['string']] = $entry;
-        }
-
-        $idx = 0;
-        $this->transTable = array();
+        $transTable = array();
         $table = $this->parseOffsetTable($fp, $offsets['trans_offset'],
                         $offsets['num_strings']);
         foreach ($table as $idx => $entry) {
+            $transTable[$idx] = $this->parseEntry($fp, $entry);
+        }
+
+        $this->translationTable = array();
+
+        $this->origTable = array();
+        $table = $this->parseOffsetTable($fp, $offsets['orig_offset'],
+                        $offsets['num_strings']);
+        foreach ($table as $idx => $entry) {
             $entry = $this->parseEntry($fp, $entry);
-            $this->transTable[$idx] = $entry;
+
+            $formes      = explode(chr(0), $entry);
+            $translation = explode(chr(0), $transTable[$idx]);
+            foreach($formes as $form) {
+                $this->translationTable[$form] = $translation;
+            }
         }
 
         fclose($fp);
@@ -166,11 +167,8 @@ class Gettext_PHP extends Gettext
             $this->parse();
         }
 
-        if (array_key_exists($msg, $this->origTable)) {
-            $idx = $this->origTable[$msg]['index'];
-            if (array_key_exists($idx, $this->transTable)) {
-                return $this->transTable[$idx]['string'];
-            }
+        if (array_key_exists($msg, $this->translationTable)) {
+            return $this->translationTable[$msg][0];
         }
         return $msg;
     }
@@ -179,19 +177,24 @@ class Gettext_PHP extends Gettext
         if (!$this->parsed) {
             $this->parse();
         }
-        $k = $msg . chr(0) . $msg_plural;
-        if (array_key_exists($k, $this->origTable)) {
-            $idx    = $this->origTable[$k]['index'];
-            $entry  = $this->transTable[$idx]['string'];
-            $msgarr = explode(chr(0), $entry);
-            if (count($msgarr) < $count - 1) {
-                return $msg;
-            }
 
-            return $msgarr[$count - 1];
+        $msg   = (string) $msg;
+
+        if (array_key_exists($msg, $this->translationTable)) {
+            $translation = $this->translationTable[$msg];
+            /* the gettext api expect an unsigned int, so we just fake 'cast' */
+            if ($count < 0 || count($translation) < $count) {
+                $count = count($translation);
+            }
+            return $translation[$count - 1];
         }
 
-        return $msg;
+        /* not found, handle count */
+        if ($count == 1) {
+            return $msg;
+        } else {
+            return $msg_plural;
+        }
     }
 }
 

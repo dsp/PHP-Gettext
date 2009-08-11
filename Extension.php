@@ -21,6 +21,8 @@
  * THE SOFTWARE.
  */
 
+namespace Gettext\Implementation;
+
 
 /**
  * Gettext implementation in PHP
@@ -28,7 +30,7 @@
  * @copyright (c) 2009 David Soria Parra <sn_@gmx.net>
  * @author David Soria Parra <sn_@gmx.net>
  */
-class Gettext_Extension extends Gettext
+class Extension extends \Gettext\Gettext
 {
     /**
      * Initialize a new gettext class
