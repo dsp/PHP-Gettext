@@ -40,11 +40,38 @@ abstract class Gettext
      * If the translation is not found, the original passed message
      * will be returned.
      *
+     * @param String $msg The message to translate
+     * 
      * @return Translated message
      */
     public abstract function gettext($msg);
+
+    /**
+     * Return the translated plural version of a string 
+     *
+     * If the translation is not found, the original passed message
+     * will be returned.
+     *
+     * @param String $msg1 The singular form
+     * @param String $msg2 The plural form
+     * @param Integer $count The plural count
+     *
+     * @return Translated message
+     */
     public abstract function ngettext($msg1, $msg2, $count);
 
+    /**
+     * Returns an instance of a gettext implementation depending on
+     * the capabilities of the PHP installation. If the gettext extension
+     * is loaded, we use the native gettext() bindings, otherwise we use
+     * an own implementation
+     *
+     * @param String $directory Directory to search the mo files in
+     * @param String $domain    The current domain
+     * @param String $locale    The local
+     *
+     * @retunr Gettext An instance of a Gettext implementation
+     */
     public static function getInstance($directory, $domain, $locale) {
         if (!self::$instance) {
             if (extension_loaded('gettext')) {
