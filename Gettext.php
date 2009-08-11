@@ -21,7 +21,7 @@
  * THE SOFTWARE.
  */
 
-include 'Native.php';
+include 'PHP.php';
 include 'Extension.php';
 
 /**
@@ -77,7 +77,7 @@ abstract class Gettext
             if (extension_loaded('gettext')) {
                 self::$instance = new Gettext_Extension($directory, $domain, $locale);
             } else {
-                self::$instance = new Gettext_Native($directory, $domain, $locale);
+                self::$instance = new Gettext_PHP($directory, $domain, $locale);
             }
         }
 
