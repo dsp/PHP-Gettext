@@ -30,6 +30,7 @@ class ExtensionTest extends PHPUnit_Framework_TestCase
         $this->assertContains('Last-Translator', $this->fixture->ngettext(null, null, 1));
 
         $this->assertEquals('Dateien sind zu klein', $this->fixture->ngettext('File is too small', 'Files are too small', -1));
+        $this->assertEquals('Dateien sind zu klein', $this->fixture->ngettext('File is too small', 'Files are too small', 0));
     }
 }
 

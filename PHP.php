@@ -239,7 +239,7 @@ class Gettext_PHP extends Gettext
         if (array_key_exists($msg, $this->translationTable)) {
             $translation = $this->translationTable[$msg];
             /* the gettext api expect an unsigned int, so we just fake 'cast' */
-            if ($count < 0 || count($translation) < $count) {
+            if ($count <= 0 || count($translation) < $count) {
                 $count = count($translation);
             }
             return $translation[$count - 1];
