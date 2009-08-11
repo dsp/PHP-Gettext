@@ -21,8 +21,8 @@
  * THE SOFTWARE.
  */
 
-include 'PHP.php';
-include 'Extension.php';
+require_once 'PHP.php';
+require_once 'Extension.php';
 
 /**
  * Gettext implementation in PHP
