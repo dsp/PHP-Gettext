@@ -56,6 +56,17 @@ class Gettext_PHP extends Gettext
                             $locale, $domain);
     }
 
+    /**
+     * Parse the MO file header and returns the table
+     * offsets as described in the file header.
+     *
+     * If an exception occured, the file pointer is closed and an exception
+     * will be thrown.
+     *
+     * @oaram Ressource $fp The open file handler to the MO file
+     *
+     * @return An array of offset
+     */
     private function parseHeader($fp)
     {
         $data   = fread($fp, 8);
@@ -80,6 +91,21 @@ class Gettext_PHP extends Gettext
         return $offsets;
     }
 
+    /**
+     * Parse and reutnrs the string offsets in a a table. Two table can be found in
+     * a mo file. The table with the translations and the table with the original
+     * strings. Both contain offsets to the strings in the file.
+     *
+     *
+     * If an exception occured, the file pointer is closed and an exception
+     * will be thrown.
+     *
+     * @param Ressource $fp     The open file handler to the MO file
+     * @param Integer   $offset The offset to the table that should be parsed
+     * @param Integer   $num    The number of strings to parse
+     *
+     * @return Array of offsets
+     */
     private function parseOffsetTable($fp, $offset, $num)
     {
         if (fseek($fp, $offset, SEEK_SET) < 0) {
@@ -95,6 +121,15 @@ class Gettext_PHP extends Gettext
         return $table;
     }
 
+    /**
+     * Parse a string as referenced by an table. Returns an
+     * array with the actual string.
+     *
+     * @param Ressource $fp    The open file handler to the MO fie
+     * @param Array     $entry The entry as parsed by parseOffsetTable()
+     *
+     * @return Parsed string
+     */
     private function parseEntry($fp, $entry)
     {
         if (fseek($fp, $entry['offset'], SEEK_SET) < 0) {
@@ -180,6 +215,19 @@ class Gettext_PHP extends Gettext
         return $msg;
     }
 
+    /**
+     * Return a translated string in it's plural form
+     *
+     * Returns the given $count (e.g second, third,...) plural form of the
+     * given string. If the id is not found and $num == 1 $msg is returned,
+     * otherwise $msg_plural
+     *
+     * @param String $msg The message to search for
+     * @param String $msg_plural A fallback plural form
+     * @param Integer $count Which plural form
+     *
+     * @return Translated string
+     */
     public function ngettext($msg, $msg_plural, $count)
     {
         if (!$this->parsed) {

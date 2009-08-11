@@ -55,8 +55,21 @@ class Gettext_Extension extends Gettext
         return gettext($msg);
     }
 
-    public function ngettext($msg1, $msg2, $count)
+    /**
+     * Return a translated string in it's plural form
+     *
+     * Returns the given $count (e.g second, third,...) plural form of the
+     * given string. If the id is not found and $num == 1 $msg is returned,
+     * otherwise $msg_plural
+     *
+     * @param String $msg The message to search for
+     * @param String $msg_plural A fallback plural form
+     * @param Integer $count Which plural form
+     *
+     * @return Translated string
+     */
+    public function ngettext($msg, $msg_plural, $count)
     {
-        return ngettext($msg1, $msg2, $count);
+        return ngettext($msg, $msg_plural, $count);
     }
 }
