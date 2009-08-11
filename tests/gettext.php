@@ -2,8 +2,16 @@
 
 include_once "Gettext.php";
 
-$gn = new Gettext_PHP("/Users/dsp/dev/python/mercurial/locale/", "hg", "de");
-$ge = new Gettext_Extension("/Users/dsp/dev/python/mercurial/locale/", "hg", "de");
-var_dump($gn->gettext("a bookmark of this name does not exist"));
-var_dump($ge->gettext("a bookmark of this name does not exist"));
-var_dump($gn->gettext("a bookmark of this name does not exist") == $ge->gettext("a bookmark of this name does not exist"));
+$dirname = realpath(dirname($_SERVER['SCRIPT_FILENAME']));
+$gn = new Gettext_PHP($dirname . "/", "gettext", "de");
+$ge = new Gettext_Extension($dirname . "/", "gettext", "de");
+var_dump($gn->gettext("File does not exist"));
+var_dump($ge->gettext("File does not exist"));
+var_dump($gn->gettext("File does not exist") == $ge->gettext("File does not exist"));
+var_dump($gn->ngettext("File is too small", "Files are too small", 1));
+var_dump($ge->ngettext("File is too small", "Files are too small", 1));
+var_dump($gn->ngettext("File is too small", "Files are too small", 1) == $ge->ngettext("File is too small", "Files are too small", 1));
+var_dump($gn->ngettext("File is too small", "Files are too small", 2));
+var_dump($ge->ngettext("File is too small", "Files are too small", 2));
+var_dump($gn->ngettext("File is too small", "Files are too small", 2) == $ge->ngettext("File is too small", "Files are too small", 2));
+
