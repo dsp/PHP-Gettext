@@ -49,16 +49,17 @@ abstract class Gettext
     public abstract function gettext($msg);
 
     /**
-     * Return the translated plural version of a string 
+     * Return a translated string in it's plural form
      *
-     * If the translation is not found, the original passed message
-     * will be returned.
+     * Returns the given $count (e.g second, third,...) plural form of the
+     * given string. If the id is not found and $num == 1 $msg is returned,
+     * otherwise $msg_plural
      *
-     * @param String $msg1 The singular form
-     * @param String $msg2 The plural form
-     * @param Integer $count The plural count
+     * @param String $msg The message to search for
+     * @param String $msg_plural A fallback plural form
+     * @param Integer $count Which plural form
      *
-     * @return Translated message
+     * @return Translated string
      */
     public abstract function ngettext($msg1, $msg2, $count);
 
@@ -74,7 +75,8 @@ abstract class Gettext
      *
      * @retunr Gettext An instance of a Gettext implementation
      */
-    public static function getInstance($directory, $domain, $locale) {
+    public static function getInstance($directory, $domain, $locale)
+    {
         if (!self::$instance) {
             if (extension_loaded('gettext')) {
                 self::$instance = new \Gettext\Implementation\Extension($directory, $domain, $locale);

@@ -51,21 +51,35 @@ class PHP extends \Gettext\Gettext
      *
      * @param String $mofile The file to parse
      */
-    public function __construct($directory, $domain, $locale) {
-        $this->mofile = sprintf("%s/%s/LC_MESSAGES/%s.mo", $directory, $locale, $domain);
+    public function __construct($directory, $domain, $locale)
+    {
+        $this->mofile = sprintf("%s/%s/LC_MESSAGES/%s.mo", $directory,
+                            $locale, $domain);
     }
 
-    private function parseHeader($fp){
+    /**
+     * Parse the MO file header and returns the table
+     * offsets as described in the file header.
+     *
+     * If an exception occured, the file pointer is closed and an exception
+     * will be thrown.
+     *
+     * @oaram Ressource $fp The open file handler to the MO file
+     *
+     * @return An array of offset
+     */
+    private function parseHeader($fp)
+    {
         $data   = fread($fp, 8);
         $header = unpack("imagic/irevision", $data);
 
-        if ($header['magic'] != (int) self::MAGIC1
-           && $header['magic'] != (int) self::MAGIC2) {
+        if ((int) self::MAGIC1 != $header['magic']
+           && (int) self::MAGIC2 != $header['magic']) {
             fclose($fp);
             throw new \Exception ("Not a gettext file");
         }
 
-        if ($header['revision'] != 0) {
+        if (0 != $header['revision']) {
             fclose($fp);
             throw new \Exception ("Unsupported version");
         }
@@ -73,11 +87,28 @@ class PHP extends \Gettext\Gettext
         $this->revision = $header['revision'];
 
         $data    = fread($fp, 4 * 5);
-        $offsets = unpack("inum_strings/iorig_offset/itrans_offset/ihash_size/ihash_offset", $data);
+        $offsets = unpack("inum_strings/iorig_offset/"
+                          . "itrans_offset/ihash_size/ihash_offset", $data);
         return $offsets;
     }
 
-    private function parseOffsetTable($fp, $offset, $num) {
+    /**
+     * Parse and reutnrs the string offsets in a a table. Two table can be found in
+     * a mo file. The table with the translations and the table with the original
+     * strings. Both contain offsets to the strings in the file.
+     *
+     *
+     * If an exception occured, the file pointer is closed and an exception
+     * will be thrown.
+     *
+     * @param Ressource $fp     The open file handler to the MO file
+     * @param Integer   $offset The offset to the table that should be parsed
+     * @param Integer   $num    The number of strings to parse
+     *
+     * @return Array of offsets
+     */
+    private function parseOffsetTable($fp, $offset, $num)
+    {
         if (fseek($fp, $offset, SEEK_SET) < 0) {
             throw new \Exception ("Error seeking offset");
         }
@@ -91,7 +122,17 @@ class PHP extends \Gettext\Gettext
         return $table;
     }
 
-    private function parseEntry($fp, $entry) {
+    /**
+     * Parse a string as referenced by an table. Returns an
+     * array with the actual string.
+     *
+     * @param Ressource $fp    The open file handler to the MO fie
+     * @param Array     $entry The entry as parsed by parseOffsetTable()
+     *
+     * @return Parsed string
+     */
+    private function parseEntry($fp, $entry)
+    {
         if (fseek($fp, $entry['offset'], SEEK_SET) < 0) {
             fclose($fp);
             throw new \Exception ("Error seeking offset");
@@ -109,7 +150,8 @@ class PHP extends \Gettext\Gettext
      *
      * @return void
      */
-    private function parse() {
+    private function parse()
+    {
         if (!file_exists($this->mofile)) {
             throw new \Exception ("File does not exist");
         }
@@ -162,7 +204,8 @@ class PHP extends \Gettext\Gettext
      *
      * @return Translated message
      */
-    public function gettext($msg) {
+    public function gettext($msg)
+    {
         if (!$this->parsed) {
             $this->parse();
         }
@@ -173,12 +216,26 @@ class PHP extends \Gettext\Gettext
         return $msg;
     }
 
-    public function ngettext($msg, $msg_plural, $count) {
+    /**
+     * Return a translated string in it's plural form
+     *
+     * Returns the given $count (e.g second, third,...) plural form of the
+     * given string. If the id is not found and $num == 1 $msg is returned,
+     * otherwise $msg_plural
+     *
+     * @param String $msg The message to search for
+     * @param String $msg_plural A fallback plural form
+     * @param Integer $count Which plural form
+     *
+     * @return Translated string
+     */
+    public function ngettext($msg, $msg_plural, $count)
+    {
         if (!$this->parsed) {
             $this->parse();
         }
 
-        $msg   = (string) $msg;
+        $msg = (string) $msg;
 
         if (array_key_exists($msg, $this->translationTable)) {
             $translation = $this->translationTable[$msg];
@@ -190,7 +247,7 @@ class PHP extends \Gettext\Gettext
         }
 
         /* not found, handle count */
-        if ($count == 1) {
+        if (1 == $count) {
             return $msg;
         } else {
             return $msg_plural;
