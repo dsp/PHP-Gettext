@@ -4,32 +4,38 @@ require_once '../Gettext.php';
 
 class PHPTest extends PHPUnit_Framework_TestCase
 {
-    public function setUp()
-    {
-        $this->fixture = new \Gettext\Implementation\PHP('./', 'gettext', 'de');
-    }
 
     public function testGettext()
     {
-        $this->assertEquals('Datei existiert nicht', $this->fixture->gettext('File does not exist'));
-        $this->assertEquals('Datei ist zu klein', $this->fixture->gettext('File is too small'));
-        $this->assertEquals('Foobar', $this->fixture->gettext('Foobar'));
-        $this->assertContains('Last-Translator', $this->fixture->gettext(null));
+        $g = new Gettext\Implementation\PHP('./', 'gettext', 'de');
+        $this->assertEquals('Datei existiert nicht', $g->gettext('File does not exist'));
+        $this->assertEquals('Datei ist zu klein', $g->gettext('File is too small'));
+        $this->assertEquals('Foobar', $g->gettext('Foobar'));
+        $this->assertContains('Last-Translator', $g->gettext(null));
+    }
+
+    public function testNonexistantFile()
+    {
+        $g = new Gettext\Implementation\PHP('./', 'gettext', 'notexistent');
+        $this->assertEquals('Foobar', $g->gettext('Foobar'));
     }
 
     public function testNgettext()
     {
-        $this->assertEquals('Datei existiert nicht', $this->fixture->ngettext('File does not exist', 'Files donnot exists', 1));
-        $this->assertEquals('Datei ist zu klein', $this->fixture->ngettext('File is too small', 'Files are too small', 1));
-        $this->assertEquals('Foobar', $this->fixture->ngettext('Foobar', 'Foobar', 1));
+        $g = new Gettext\Implementation\PHP('./', 'gettext', 'de');
+        $this->assertEquals('Datei existiert nicht', $g->gettext('File does not exist'));
+        $this->assertEquals('Datei existiert nicht', $g->ngettext('File does not exist', 'Files donnot exists', 1));
+        $this->assertEquals('Datei ist zu klein', $g->ngettext('File is too small', 'Files are too small', 1));
+        $this->assertEquals('Foobar', $g->ngettext('Foobar', 'Foobar', 1));
 
-        $this->assertEquals('Datei existiert nicht', $this->fixture->ngettext('File does not exist', 'Files donnot exists', 2));
-        $this->assertEquals('Dateien sind zu klein', $this->fixture->ngettext('File is too small', 'Files are too small', 2));
-        $this->assertEquals('Foobar', $this->fixture->ngettext('Foobar', 'Foobar', 2));
+        $this->assertEquals('Datei existiert nicht', $g->ngettext('File does not exist', 'Files donnot exists', 2));
+        $this->assertEquals('Dateien sind zu klein', $g->ngettext('File is too small', 'Files are too small', 2));
+        $this->assertEquals('Foobar', $g->ngettext('Foobar', 'Foobar', 2));
 
-        $this->assertContains('Last-Translator', $this->fixture->ngettext(null, null, 1));
+        $this->assertContains('Last-Translator', $g->ngettext(null, null, 1));
 
-        $this->assertEquals('Dateien sind zu klein', $this->fixture->ngettext('File is too small', 'Files are too small', -1));
+        $this->assertEquals('Dateien sind zu klein', $g->ngettext('File is too small', 'Files are too small', -1));
+        $this->assertEquals('Dateien sind zu klein', $g->ngettext('File is too small', 'Files are too small', 0));
     }
 }
 
