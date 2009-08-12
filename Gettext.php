@@ -75,14 +75,15 @@ abstract class Gettext
      */
     public static function getInstance($directory, $domain, $locale)
     {
-        if (!self::$instance) {
+        $key = $directory . $domain . $locale;
+        if (!isset(self::$instance[$key])) {
             if (extension_loaded('gettext')) {
-                self::$instance = new Gettext_Extension($directory, $domain, $locale);
+                self::$instance[$key] = new Gettext_Extension($directory, $domain, $locale);
             } else {
-                self::$instance = new Gettext_PHP($directory, $domain, $locale);
+                self::$instance[$key] = new Gettext_PHP($directory, $domain, $locale);
             }
         }
 
-        return self::$instance;
+        return self::$instance[$key];
     }
 }
