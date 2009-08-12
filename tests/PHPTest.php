@@ -14,6 +14,12 @@ class PHPTest extends PHPUnit_Framework_TestCase
         $this->assertContains('Last-Translator', $g->gettext(null));
     }
 
+    public function testNonexistantFile()
+    {
+        $g = new Gettext_PHP('./', 'gettext', 'notexistent');
+        $this->assertEquals('Foobar', $g->gettext('Foobar'));
+    }
+
     public function testNgettext()
     {
         $g = new Gettext_PHP('./', 'gettext', 'de');
