@@ -160,6 +160,7 @@ class Gettext_PHP extends Gettext
 
         $offsets = $this->parseHeader($fp);
         if (null == $offsets || $filesize < 4 * ($offsets['num_strings'] + 7)) {
+            fclose($fp);
             return;
         }
 
@@ -167,6 +168,7 @@ class Gettext_PHP extends Gettext
         $table = $this->parseOffsetTable($fp, $offsets['trans_offset'],
                     $offsets['num_strings']);
         if (null == $table) {
+            fclose($fp);
             return;
         }
 
