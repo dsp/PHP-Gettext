@@ -73,18 +73,19 @@ abstract class Gettext
      * @param String $domain    The current domain
      * @param String $locale    The local
      *
-     * @retunr Gettext An instance of a Gettext implementation
+     * @return Gettext An instance of a Gettext implementation
      */
     public static function getInstance($directory, $domain, $locale)
     {
-        if (!self::$instance) {
+        $key = $directory . $domain . $locale;
+        if (!isset(self::$instance[$key])) {
             if (extension_loaded('gettext')) {
-                self::$instance = new \Gettext\Implementation\Extension($directory, $domain, $locale);
+                self::$instance[$key] = new \Gettext\Implementation\Extension($directory, $domain, $locale);
             } else {
-                self::$instance = new \Gettext\Implementation\PHP($directory, $domain, $locale);
+                self::$instance[$key] = new \Gettext\Implementation\PHP($directory, $domain, $locale);
             }
         }
 
-        return self::$instance;
+        return self::$instance[$key];
     }
 }
