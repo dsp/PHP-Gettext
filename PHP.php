@@ -42,7 +42,6 @@ class Gettext_PHP extends Gettext
 
     protected $mofile;
     protected $translationTable = array();
-    protected $revision = 0;
     protected $parsed = false;
 
     /**
@@ -80,8 +79,6 @@ class Gettext_PHP extends Gettext
         if (0 != $header['revision']) {
             return null;
         }
-
-        $this->revision = $header['revision'];
 
         $data    = fread($fp, 4 * 5);
         $offsets = unpack("inum_strings/iorig_offset/"
@@ -177,7 +174,6 @@ class Gettext_PHP extends Gettext
             $transTable[$idx] = $this->parseEntry($fp, $entry);
         }
 
-        $this->origTable = array();
         $table = $this->parseOffsetTable($fp, $offsets['orig_offset'],
                     $offsets['num_strings']);
         foreach ($table as $idx => $entry) {
