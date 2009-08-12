@@ -60,8 +60,8 @@ class Gettext_PHP extends Gettext
      * Parse the MO file header and returns the table
      * offsets as described in the file header.
      *
-     * If an exception occured, the file pointer is closed and an exception
-     * will be thrown.
+     * If an exception occured, null is returned. This is intentionally
+     * as we need to get close to ext/gettexts beahvior.
      *
      * @oaram Ressource $fp The open file handler to the MO file
      *
@@ -74,13 +74,11 @@ class Gettext_PHP extends Gettext
 
         if ((int) self::MAGIC1 != $header['magic']
            && (int) self::MAGIC2 != $header['magic']) {
-            fclose($fp);
-            throw new Exception("Not a gettext file");
+            return null;
         }
 
         if (0 != $header['revision']) {
-            fclose($fp);
-            throw new Exception("Unsupported version");
+            return null;
         }
 
         $this->revision = $header['revision'];
@@ -96,9 +94,8 @@ class Gettext_PHP extends Gettext
      * a mo file. The table with the translations and the table with the original
      * strings. Both contain offsets to the strings in the file.
      *
-     *
-     * If an exception occured, the file pointer is closed and an exception
-     * will be thrown.
+     * If an exception occured, null is returned. This is intentionally
+     * as we need to get close to ext/gettexts beahvior.
      *
      * @param Ressource $fp     The open file handler to the MO file
      * @param Integer   $offset The offset to the table that should be parsed
@@ -109,7 +106,7 @@ class Gettext_PHP extends Gettext
     private function parseOffsetTable($fp, $offset, $num)
     {
         if (fseek($fp, $offset, SEEK_SET) < 0) {
-            throw new Exception("Error seeking offset");
+            return null;
         }
 
         $table = array();
@@ -133,8 +130,7 @@ class Gettext_PHP extends Gettext
     private function parseEntry($fp, $entry)
     {
         if (fseek($fp, $entry['offset'], SEEK_SET) < 0) {
-            fclose($fp);
-            throw new Exception("Error seeking offset");
+            return null;
         }
         if ($entry['size'] > 0) {
             return fread($fp, $entry['size']);
@@ -151,35 +147,39 @@ class Gettext_PHP extends Gettext
      */
     private function parse()
     {
+        $this->translationTable = array();
+
         if (!file_exists($this->mofile)) {
-            throw new Exception("File does not exist");
+            return;
         }
 
         $filesize = filesize($this->mofile);
         if ($filesize < 4 * 7) {
-            throw new Exception('File is too small');
+            return;
         }
-    
+
         /* check for filesize */
         $fp = fopen($this->mofile, "rb");
 
         $offsets = $this->parseHeader($fp);
-        if ($filesize < 4 * ($offsets['num_strings'] + 7)) {
-            throw new Exception('File is too small');
+        if (null == $offsets || $filesize < 4 * ($offsets['num_strings'] + 7)) {
+            return;
         }
 
         $transTable = array();
         $table = $this->parseOffsetTable($fp, $offsets['trans_offset'],
-                        $offsets['num_strings']);
+                    $offsets['num_strings']);
+        if (null == $table) {
+            return;
+        }
+
         foreach ($table as $idx => $entry) {
             $transTable[$idx] = $this->parseEntry($fp, $entry);
         }
 
-        $this->translationTable = array();
-
         $this->origTable = array();
         $table = $this->parseOffsetTable($fp, $offsets['orig_offset'],
-                        $offsets['num_strings']);
+                    $offsets['num_strings']);
         foreach ($table as $idx => $entry) {
             $entry = $this->parseEntry($fp, $entry);
 
