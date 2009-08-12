@@ -71,7 +71,7 @@ abstract class Gettext
      * @param String $domain    The current domain
      * @param String $locale    The local
      *
-     * @retunr Gettext An instance of a Gettext implementation
+     * @return Gettext An instance of a Gettext implementation
      */
     public static function getInstance($directory, $domain, $locale)
     {
