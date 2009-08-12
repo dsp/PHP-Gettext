@@ -70,7 +70,7 @@ class PHP extends \Gettext\Gettext
     private function parseHeader($fp)
     {
         $data   = fread($fp, 8);
-        $header = unpack("imagic/irevision", $data);
+        $header = unpack("lmagic/lrevision", $data);
 
         if ((int) self::MAGIC1 != $header['magic']
            && (int) self::MAGIC2 != $header['magic']) {
@@ -82,8 +82,8 @@ class PHP extends \Gettext\Gettext
         }
 
         $data    = fread($fp, 4 * 5);
-        $offsets = unpack("inum_strings/iorig_offset/"
-                          . "itrans_offset/ihash_size/ihash_offset", $data);
+        $offsets = unpack("lnum_strings/lorig_offset/"
+                          . "ltrans_offset/lhash_size/lhash_offset", $data);
         return $offsets;
     }
 
