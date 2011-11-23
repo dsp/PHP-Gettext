@@ -150,11 +150,13 @@ class Gettext_PHP extends Gettext
         $this->translationTable = array();
 
         if (!file_exists($this->mofile)) {
+            $this->parsed = true;
             return;
         }
 
         $filesize = filesize($this->mofile);
         if ($filesize < 4 * 7) {
+            $this->parsed = true;
             return;
         }
 
