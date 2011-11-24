@@ -56,6 +56,22 @@ class Gettext_Extension extends Gettext
     }
 
     /**
+     * Overrides the domain for a single lookup
+     *
+     * If the translation is not found, the original passed message
+     * will be returned.
+     *
+     * @param String $domain The domain to search in
+     * @param String $msg The message to search for
+     *
+     * @return Translated string
+     */
+    public function dgettext($domain, $msg)
+    {
+        return dgettext($domain, $msg);
+    }
+
+    /**
      * Return a translated string in it's plural form
      *
      * Returns the given $count (e.g second, third,...) plural form of the
@@ -71,5 +87,24 @@ class Gettext_Extension extends Gettext
     public function ngettext($msg, $msg_plural, $count)
     {
         return ngettext($msg, $msg_plural, $count);
+    }
+
+    /**
+     * Override the current domain for a single plural message lookup
+     *
+     * Returns the given $count (e.g second, third,...) plural form of the
+     * given string. If the id is not found and $num == 1 $msg is returned,
+     * otherwise $msg_plural
+     *
+     * @param String $domain The domain to search in
+     * @param String $msg The message to search for
+     * @param String $msg_plural A fallback plural form
+     * @param Integer $count Which plural form
+     *
+     * @return Translated string
+     */
+    public function dngettext($domain, $msg, $msg_plural, $count)
+    {
+        return dngettext($domain, $msg, $msg_plural, $count);
     }
 }
