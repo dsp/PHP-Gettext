@@ -40,9 +40,11 @@ class Gettext_PHP extends Gettext
      */
     const MAGIC2 = 0x950412de;
 
-    protected $mofile;
+    protected $dir;
+    protected $domain;
+    protected $locale;
     protected $translationTable = array();
-    protected $parsed = false;
+    protected $parsed = array();
 
     /**
      * Initialize a new gettext class
@@ -51,8 +53,9 @@ class Gettext_PHP extends Gettext
      */
     public function __construct($directory, $domain, $locale)
     {
-        $this->mofile = sprintf("%s/%s/LC_MESSAGES/%s.mo", $directory,
-                            $locale, $domain);
+        $this->dir = $directory;
+        $this->domain = $domain;
+        $this->locale = $locale;
     }
 
     /**
@@ -136,61 +139,68 @@ class Gettext_PHP extends Gettext
        return '';
     }
 
-
     /**
      * Parse the MO file
      *
      * @return void
      */
-    private function parse()
+    private function parse($locale, $domain)
     {
-        $this->translationTable = array();
+        $this->translationTable[$locale][$domain] = array();
+        $mofile = sprintf("%s/%s/LC_MESSAGES/%s.mo", $this->dir, $locale, $domain);
+        $cachefile = sprintf("%s/%s/LC_MESSAGES/%s.ser", $this->dir, $locale, $domain);
 
-        if (!file_exists($this->mofile)) {
+        if (!file_exists($mofile)) {
+            $this->parsed[$locale][$domain] = true;
             return;
         }
 
-        $filesize = filesize($this->mofile);
+        $filesize = filesize($mofile);
         if ($filesize < 4 * 7) {
+            $this->parsed[$locale][$domain] = true;
             return;
         }
 
-        /* check for filesize */
-        $fp = fopen($this->mofile, "rb");
+        if (($tmpobj = @file_get_contents($cachefile)) === FALSE || @filemtime($cachefile) < filemtime($mofile)) {
+            /* check for filesize */
+            $fp = fopen($mofile, "rb");
 
-        $offsets = $this->parseHeader($fp);
-        if (null == $offsets || $filesize < 4 * ($offsets['num_strings'] + 7)) {
-            fclose($fp);
-            return;
-        }
-
-        $transTable = array();
-        $table = $this->parseOffsetTable($fp, $offsets['trans_offset'],
-                    $offsets['num_strings']);
-        if (null == $table) {
-            fclose($fp);
-            return;
-        }
-
-        foreach ($table as $idx => $entry) {
-            $transTable[$idx] = $this->parseEntry($fp, $entry);
-        }
-
-        $table = $this->parseOffsetTable($fp, $offsets['orig_offset'],
-                    $offsets['num_strings']);
-        foreach ($table as $idx => $entry) {
-            $entry = $this->parseEntry($fp, $entry);
-
-            $formes      = explode(chr(0), $entry);
-            $translation = explode(chr(0), $transTable[$idx]);
-            foreach($formes as $form) {
-                $this->translationTable[$form] = $translation;
+            $offsets = $this->parseHeader($fp);
+            if (null == $offsets || $filesize < 4 * ($offsets['num_strings'] + 7)) {
+                fclose($fp);
+                return;
             }
+
+            $transTable = array();
+            $table = $this->parseOffsetTable($fp, $offsets['trans_offset'],
+                        $offsets['num_strings']);
+            if (null == $table) {
+                fclose($fp);
+                return;
+            }
+
+            foreach ($table as $idx => $entry) {
+                $transTable[$idx] = $this->parseEntry($fp, $entry);
+            }
+
+            $table = $this->parseOffsetTable($fp, $offsets['orig_offset'],
+                        $offsets['num_strings']);
+            foreach ($table as $idx => $entry) {
+                $entry = $this->parseEntry($fp, $entry);
+
+                $formes      = explode(chr(0), $entry);
+                $translation = explode(chr(0), $transTable[$idx]);
+                foreach($formes as $form) {
+                    $this->translationTable[$locale][$domain][$form] = $translation;
+                }
+            }
+            @file_put_contents($cachefile, serialize($this->translationTable[$locale][$domain]) );
+
+            fclose($fp);
+        } else {
+            $this->translationTable[$locale][$domain] = unserialize($tmpobj);
         }
-
-        fclose($fp);
-
-        $this->parsed = true;
+        $this->parsed[$locale][$domain] = true;
     }
 
     /**
@@ -203,12 +213,35 @@ class Gettext_PHP extends Gettext
      */
     public function gettext($msg)
     {
-        if (!$this->parsed) {
-            $this->parse();
+        if (!@$this->parsed[$this->locale][$this->domain]) {
+            $this->parse($this->locale, $this->domain);
         }
 
-        if (array_key_exists($msg, $this->translationTable)) {
-            return $this->translationTable[$msg][0];
+        if (array_key_exists($msg, $this->translationTable[$this->locale][$this->domain])) {
+            return $this->translationTable[$this->locale][$this->domain][$msg][0];
+        }
+        return $msg;
+    }
+
+    /**
+     * Overrides the domain for a single lookup
+     *
+     * If the translation is not found, the original passed message
+     * will be returned.
+     *
+     * @param String $domain The domain to search in
+     * @param String $msg The message to search for
+     *
+     * @return Translated string
+     */
+    public function dgettext($domain, $msg)
+    {
+        if (!@$this->parsed[$this->locale][$domain]) {
+            $this->parse($this->locale, $domain);
+        }
+
+        if (array_key_exists($msg, $this->translationTable[$this->locale][$domain])) {
+            return $this->translationTable[$this->locale][$domain][$msg][0];
         }
         return $msg;
     }
@@ -228,14 +261,53 @@ class Gettext_PHP extends Gettext
      */
     public function ngettext($msg, $msg_plural, $count)
     {
-        if (!$this->parsed) {
-            $this->parse();
+        if (!@$this->parsed[$this->locale][$this->domain]) {
+            $this->parse($this->locale, $this->domain);
         }
 
         $msg = (string) $msg;
 
-        if (array_key_exists($msg, $this->translationTable)) {
-            $translation = $this->translationTable[$msg];
+        if (array_key_exists($msg, $this->translationTable[$this->locale][$this->domain])) {
+            $translation = $this->translationTable[$this->locale][$this->domain][$msg];
+            /* the gettext api expect an unsigned int, so we just fake 'cast' */
+            if ($count <= 0 || count($translation) < $count) {
+                $count = count($translation);
+            }
+            return $translation[$count - 1];
+        }
+
+        /* not found, handle count */
+        if (1 == $count) {
+            return $msg;
+        } else {
+            return $msg_plural;
+        }
+    }
+
+    /**
+     * Override the current domain for a single plural message lookup
+     *
+     * Returns the given $count (e.g second, third,...) plural form of the
+     * given string. If the id is not found and $num == 1 $msg is returned,
+     * otherwise $msg_plural
+     *
+     * @param String $domain The domain to search in
+     * @param String $msg The message to search for
+     * @param String $msg_plural A fallback plural form
+     * @param Integer $count Which plural form
+     *
+     * @return Translated string
+     */
+    public function dngettext($domain, $msg, $msg_plural, $count)
+    {
+        if (!@$this->parsed[$this->locale][$domain]) {
+            $this->parse($this->locale, $domain);
+        }
+
+        $msg = (string) $msg;
+
+        if (array_key_exists($msg, $this->translationTable[$this->locale][$domain])) {
+            $translation = $this->translationTable[$this->locale][$domain][$msg];
             /* the gettext api expect an unsigned int, so we just fake 'cast' */
             if ($count <= 0 || count($translation) < $count) {
                 $count = count($translation);
@@ -251,4 +323,3 @@ class Gettext_PHP extends Gettext
         }
     }
 }
-
