@@ -20,7 +20,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-
+namespace gettext;
 
 /**
  * Gettext implementation in PHP
@@ -28,31 +28,35 @@
  * @copyright (c) 2009 David Soria Parra <sn_@gmx.net>
  * @author David Soria Parra <sn_@gmx.net>
  */
-class Gettext_PHP extends Gettext
+class PHP extends Gettext
 {
     /**
      * First magic word in the MO header
      */
     const MAGIC1 = 0xde120495;
-
     /**
      * First magic word in the MO header
      */
     const MAGIC2 = 0x950412de;
-
     protected $mofile;
-    protected $translationTable = array();
+    protected $translationTable = [];
     protected $parsed = false;
 
     /**
      * Initialize a new gettext class
      *
-     * @param String $mofile The file to parse
+     * @param string $directory
+     * @param string $domain
+     * @param string $locale
      */
     public function __construct($directory, $domain, $locale)
     {
-        $this->mofile = sprintf("%s/%s/LC_MESSAGES/%s.mo", $directory,
-                            $locale, $domain);
+        $this->mofile = sprintf(
+            "%s/%s/LC_MESSAGES/%s.mo",
+            $directory,
+            $locale,
+            $domain
+        );
     }
 
     /**
@@ -62,17 +66,18 @@ class Gettext_PHP extends Gettext
      * If an exception occured, null is returned. This is intentionally
      * as we need to get close to ext/gettexts beahvior.
      *
-     * @oaram Ressource $fp The open file handler to the MO file
+     * @param resource $resource The open file handler to the MO file
      *
-     * @return An array of offset
+     * @return array An array of offset
      */
-    private function parseHeader($fp)
+    private function parseHeader($resource)
     {
-        $data   = fread($fp, 8);
+        $data = fread($resource, 8);
         $header = unpack("lmagic/lrevision", $data);
 
-        if ((int) self::MAGIC1 != $header['magic']
-           && (int) self::MAGIC2 != $header['magic']) {
+        if ((int)self::MAGIC1 != $header['magic']
+            && (int)self::MAGIC2 != $header['magic']
+        ) {
             return null;
         }
 
@@ -80,9 +85,10 @@ class Gettext_PHP extends Gettext
             return null;
         }
 
-        $data    = fread($fp, 4 * 5);
+        $data = fread($resource, 4 * 5);
         $offsets = unpack("lnum_strings/lorig_offset/"
-                          . "ltrans_offset/lhash_size/lhash_offset", $data);
+            . "ltrans_offset/lhash_size/lhash_offset", $data);
+
         return $offsets;
     }
 
@@ -94,21 +100,21 @@ class Gettext_PHP extends Gettext
      * If an exception occured, null is returned. This is intentionally
      * as we need to get close to ext/gettexts beahvior.
      *
-     * @param Ressource $fp     The open file handler to the MO file
-     * @param Integer   $offset The offset to the table that should be parsed
-     * @param Integer   $num    The number of strings to parse
+     * @param resource $resource The open file handler to the MO file
+     * @param Integer $offset The offset to the table that should be parsed
+     * @param Integer $num The number of strings to parse
      *
-     * @return Array of offsets
+     * @return array of offsets
      */
-    private function parseOffsetTable($fp, $offset, $num)
+    private function parseOffsetTable($resource, $offset, $num)
     {
-        if (fseek($fp, $offset, SEEK_SET) < 0) {
+        if (fseek($resource, $offset, SEEK_SET) < 0) {
             return null;
         }
 
-        $table = array();
+        $table = [];
         for ($i = 0; $i < $num; $i++) {
-            $data    = fread($fp, 8);
+            $data = fread($resource, 8);
             $table[] = unpack("lsize/loffset", $data);
         }
 
@@ -119,23 +125,22 @@ class Gettext_PHP extends Gettext
      * Parse a string as referenced by an table. Returns an
      * array with the actual string.
      *
-     * @param Ressource $fp    The open file handler to the MO fie
-     * @param Array     $entry The entry as parsed by parseOffsetTable()
+     * @param resource $resource The open file handler to the MO fie
+     * @param array $entry The entry as parsed by parseOffsetTable()
      *
-     * @return Parsed string
+     * @return string Parsed string
      */
-    private function parseEntry($fp, $entry)
+    private function parseEntry($resource, $entry)
     {
-        if (fseek($fp, $entry['offset'], SEEK_SET) < 0) {
+        if (fseek($resource, $entry['offset'], SEEK_SET) < 0) {
             return null;
         }
         if ($entry['size'] > 0) {
-            return fread($fp, $entry['size']);
+            return fread($resource, $entry['size']);
         }
 
-       return '';
+        return '';
     }
-
 
     /**
      * Parse the MO file
@@ -144,7 +149,7 @@ class Gettext_PHP extends Gettext
      */
     private function parse()
     {
-        $this->translationTable = array();
+        $this->translationTable = [];
 
         if (!file_exists($this->mofile)) {
             return;
@@ -156,39 +161,47 @@ class Gettext_PHP extends Gettext
         }
 
         /* check for filesize */
-        $fp = fopen($this->mofile, "rb");
+        $resource = fopen($this->mofile, "rb");
 
-        $offsets = $this->parseHeader($fp);
+        $offsets = $this->parseHeader($resource);
         if (null == $offsets || $filesize < 4 * ($offsets['num_strings'] + 7)) {
-            fclose($fp);
+            fclose($resource);
+
             return;
         }
 
-        $transTable = array();
-        $table = $this->parseOffsetTable($fp, $offsets['trans_offset'],
-                    $offsets['num_strings']);
+        $transTable = [];
+        $table = $this->parseOffsetTable(
+            $resource,
+            $offsets['trans_offset'],
+            $offsets['num_strings']
+        );
         if (null == $table) {
-            fclose($fp);
+            fclose($resource);
+
             return;
         }
 
         foreach ($table as $idx => $entry) {
-            $transTable[$idx] = $this->parseEntry($fp, $entry);
+            $transTable[$idx] = $this->parseEntry($resource, $entry);
         }
 
-        $table = $this->parseOffsetTable($fp, $offsets['orig_offset'],
-                    $offsets['num_strings']);
+        $table = $this->parseOffsetTable(
+            $resource,
+            $offsets['orig_offset'],
+            $offsets['num_strings']
+        );
         foreach ($table as $idx => $entry) {
-            $entry = $this->parseEntry($fp, $entry);
+            $entry = $this->parseEntry($resource, $entry);
 
-            $formes      = explode(chr(0), $entry);
+            $formes = explode(chr(0), $entry);
             $translation = explode(chr(0), $transTable[$idx]);
-            foreach($formes as $form) {
+            foreach ($formes as $form) {
                 $this->translationTable[$form] = $translation;
             }
         }
 
-        fclose($fp);
+        fclose($resource);
 
         $this->parsed = true;
     }
@@ -199,7 +212,9 @@ class Gettext_PHP extends Gettext
      * If the translation is not found, the original passed message
      * will be returned.
      *
-     * @return Translated message
+     * @param string $msg
+     *
+     * @return string Translated message
      */
     public function gettext($msg)
     {
@@ -210,6 +225,7 @@ class Gettext_PHP extends Gettext
         if (array_key_exists($msg, $this->translationTable)) {
             return $this->translationTable[$msg][0];
         }
+
         return $msg;
     }
 
@@ -224,7 +240,7 @@ class Gettext_PHP extends Gettext
      * @param String $msg_plural A fallback plural form
      * @param Integer $count Which plural form
      *
-     * @return Translated string
+     * @return string Translated string
      */
     public function ngettext($msg, $msg_plural, $count)
     {
@@ -232,7 +248,7 @@ class Gettext_PHP extends Gettext
             $this->parse();
         }
 
-        $msg = (string) $msg;
+        $msg = (string)$msg;
 
         if (array_key_exists($msg, $this->translationTable)) {
             $translation = $this->translationTable[$msg];
@@ -240,6 +256,7 @@ class Gettext_PHP extends Gettext
             if ($count <= 0 || count($translation) < $count) {
                 $count = count($translation);
             }
+
             return $translation[$count - 1];
         }
 
@@ -251,4 +268,3 @@ class Gettext_PHP extends Gettext
         }
     }
 }
-

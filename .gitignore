@@ -1,3 +1,2 @@
-.bzr
-.bzrignore
-*.swp
+vendor
+composer.lock
