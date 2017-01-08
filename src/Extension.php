@@ -20,9 +20,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-
-require_once 'PHP.php';
-require_once 'Extension.php';
+namespace gettext;
 
 /**
  * Gettext implementation in PHP
@@ -30,9 +28,21 @@ require_once 'Extension.php';
  * @copyright (c) 2009 David Soria Parra <sn_@gmx.net>
  * @author David Soria Parra <sn_@gmx.net>
  */
-abstract class Gettext
+class Extension extends Gettext
 {
-    private static $instance = null;
+    /**
+     * Extension constructor.
+     *
+     * @param string $directory
+     * @param string $domain
+     * @param string $locale
+     */
+    public function __construct($directory, $domain, $locale)
+    {
+        setlocale(LC_ALL, $locale);
+        bindtextdomain($domain, $directory);
+        textdomain($domain);
+    }
 
     /**
      * Return a translated string
@@ -40,11 +50,12 @@ abstract class Gettext
      * If the translation is not found, the original passed message
      * will be returned.
      *
-     * @param String $msg The message to translate
-     * 
-     * @return Translated message
+     * @return string Translated message
      */
-    public abstract function gettext($msg);
+    public function gettext($msg)
+    {
+        return gettext($msg);
+    }
 
     /**
      * Return a translated string in it's plural form
@@ -57,33 +68,10 @@ abstract class Gettext
      * @param String $msg_plural A fallback plural form
      * @param Integer $count Which plural form
      *
-     * @return Translated string
+     * @return string Translated string
      */
-    public abstract function ngettext($msg1, $msg2, $count);
-
-    /**
-     * Returns an instance of a gettext implementation depending on
-     * the capabilities of the PHP installation. If the gettext extension
-     * is loaded, we use the native gettext() bindings, otherwise we use
-     * an own implementation
-     *
-     * @param String $directory Directory to search the mo files in
-     * @param String $domain    The current domain
-     * @param String $locale    The local
-     *
-     * @return Gettext An instance of a Gettext implementation
-     */
-    public static function getInstance($directory, $domain, $locale)
+    public function ngettext($msg, $msg_plural, $count)
     {
-        $key = $directory . $domain . $locale;
-        if (!isset(self::$instance[$key])) {
-            if (extension_loaded('gettext')) {
-                self::$instance[$key] = new Gettext_Extension($directory, $domain, $locale);
-            } else {
-                self::$instance[$key] = new Gettext_PHP($directory, $domain, $locale);
-            }
-        }
-
-        return self::$instance[$key];
+        return ngettext($msg, $msg_plural, $count);
     }
 }
